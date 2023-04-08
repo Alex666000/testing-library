@@ -1,88 +1,60 @@
 import React from "react";
-import {render, screen} from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import App from "./App";
 
-test("renders learn react link", () => {
-    // 1 - стандартный реакт тест
-    // render(<App/>);
-    // ищем элемент по тексту через регулярку
-    // const linkElement = screen.getByText(/learn react/i);
-    // expect(linkElement).toBeInTheDocument();
-
-    // 2
-    /* отрисуем компонент Арр
-        render(<App/>);
-        //  запускаем тест и увидем полную разметку нашего приложения
-        screen.debug();*/
-
-    // 3 - скриншотное тестирование - снимки
-    const {asFragment} = render(<App/>);
-    expect(asFragment(<App/>)).toMatchSnapshot;
-
-    // 4 Search variants
-    /*
-    Search variants:
-
-      getBy:                    queryby:                    findBy:
-
-    - getByText               - queryByText               - findByText
-    - getByRole               - queryByRole               - findByRole
-    - getByLabelText          - queryByLabelText          - findByLabelText
-    - getByPlaceholderText    - queryByPlaceholderText    - findByPlaceholderText
-    - getByAltText            - queryByAltText            - findByAltText
-    - getByDisplayValue       - queryByDisplayValue       - findByDisplayValue
-    - getAllBy                - queryAllBy                - findAllBy
-    */
-
-    /*
-    Assertive Functions:
-
-    - toBeDisabled            - toBeEnabled               - toBeEmpty
-    - toBeEmptyDOMElement     - toBeInTheDocument         - toBeInvalid
-    - toBeRequired            - toBeValid                 - toBeVisible
-    - toContainElement        - toContainHTML             - toHaveAttribute
-    - toHaveClass             - toHaveFocus               - toHaveFormValues
-    - toHaveStyle             - toHaveTextContent         - toHaveValue
-    - toHaveDisplayValue      - toBeChecked               - toBePartiallyChecked
-    - toHaveDescription
-    */
-
-    describe("App", () => {
-        it("renders App component", async () => {
-            render(<App/>);
-            // элемента нет в разметке:
-            // expect(screen.queryByText(/Searches for JavaScript/)).toBeNull();
-            expect(screen.queryByText(/Logged in as/)).toBeNull();
-            // разметка без данных
-            screen.debug();
-
-            // после получения данных в разметке появится эта строка
-            expect(await screen.findByText(/Logged in as/)).toBeInTheDocument();
-            // разметку получили новую с данными отличается от разметки стр 56
-            screen.debug();
-
-            // Assertive Functions Examples:
-            expect(screen.getByAltText(/search image/)).toHaveClass("image");
-            expect(screen.getByLabelText(/search/i)).not.toBeRequired();
-            expect(screen.getByLabelText(/search/i)).toBeEmpty();
-            expect(screen.getByLabelText(/search/i)).toHaveAttribute("id");
+describe("App", () => {
+    // async - так как делаем запрос в коде
+    test("renders App component", async () => {
+        // отрисовываем
+        render(<App />);
+        // проверяем разметку
+        await screen.findByText(/Logged in as/);
+        // изначально строки /Searches for JavaScript/ нету,
+        expect(screen.queryByText(/Searches for JavaScript/)).toBeNull();
+        // внутрь передаем найденный элемент и событие - после события изменения поля она появляется строка в документе стр 18
+        fireEvent.change(screen.getByRole("textbox"), {
+            target: { value: "React" },
         });
+        expect(screen.getByText(/Searches for React/)).toBeInTheDocument();
     });
-
-
 });
 
+describe("events", () => {
+    it("checkbox click(клик по чекбоксу)", () => {
+        // jest.fn() - нужная функция -- из результата работы функции render()  --- вместо screen используем теперь...
+        const handleChange = jest.fn();
+        // container  вернет ссылку на Дом элемент куда вмонтирован наш компонент
+        const { container } = render(
+            <input type="checkbox" onChange={handleChange} />
+        );
+        // получили checkbox
+        // чтобы обратится к компоненту используем firstChild (можно было воспользоваться и getByRole...получили доступ к чекбоксу)
+        const checkbox = container.firstChild;
+        // изначально поле не выбрано
+        expect(checkbox).not.toBeChecked();
+        fireEvent.click(checkbox);
+        // слежение за функцией handleChange - что после клика она вызвана
+        expect(handleChange).toHaveBeenCalledTimes(1);
+        // чекбокс выбран
+        expect(checkbox).toBeChecked();
+    });
+
+    it("input focus(тестируем фокус элемента)", () => {
+        // с помощью этого атрибута data-testid ищем элементы в разметке осуществляется операция с помощью метода getByTestId
+        render(<input data-testid="simple-input" type="text" />);
+        const input = screen.getByTestId("simple-input");
+        // проверяем начальное состояние не в фокусе
+        expect(input).not.toHaveFocus();
+        // выставляем фокус
+        input.focus();
+        // элемент в фокусе?
+        expect(input).toHaveFocus();
+    });
+});
 /*
-Используя реакт тестинг library - получим реальный доступ к ДОМ узлам
+реальные взаимодействия пользователей - если вводить что то в инпут компонент перерисовывается..новое значение должно отобразаться
+для имитации  пользователя с нашим интерфыейсом fireEvent()
 
-toBeNull(); toBeInTheDocument(); - для проверки наличия элем.
+Алгоритм: находим элемент -- имулируем событие -- проверяем отклик на событие --> итогом проверяем итоговою разметку
 
-getByRole - поиск элементов роль кнопка для элемента кнопки
-getByLabelText - поиск элементов по тексту в лейбле ищет
-
- getBy - (вернет или элемент или ощибку - если надо наити элемент используем его - если покахзать что элем нет в ДОМе то обязательно queryby)
- queryby - когда элемента нет в разметке используем его вместо findByText
- findBy -  используется вариант поиска для асинхронных элементов когда изначально элемента в разметке не было но при выполнении асинхр кода они появятся стр 5, 25 Арр.tsx
-
-getAllBy - если элементов несколько AllBy используем
  */
